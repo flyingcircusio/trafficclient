@@ -8,3 +8,5 @@ etc/
 develop-eggs
 *.egg-info
 *.pyc
+lib
+include

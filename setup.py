@@ -16,7 +16,7 @@ setup(
     license='gocept proprietary',
     install_requires=[
         'ZODB3',
-        'gocept.net',
+        'fc.agent',
         'IPy',
         'mocker',
     ],
