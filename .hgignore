@@ -10,3 +10,4 @@ develop-eggs
 *.pyc
 lib
 include
+lib64
