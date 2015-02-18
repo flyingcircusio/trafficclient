@@ -9,6 +9,9 @@ setup(
     description="""\
     Measure traffic and report it to the traffic server.
     """,
+    classifiers=[
+        'Programming Language :: Python :: 2.7',
+    ],
     packages=find_packages('src'),
     package_dir={'': 'src'},
     include_package_data=True,
