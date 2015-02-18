@@ -94,12 +94,7 @@ class Client(persistent.Persistent):
 
 
 def configure_logging():
-    syslog = logging.handlers.SysLogHandler('/dev/log')
     stderr = logging.StreamHandler()
-    formatter = logging.Formatter(
-        "%(name)s[%(process)d]: %(message)s")
-    syslog.setFormatter(formatter)
-    log.addHandler(syslog)
     log.addHandler(stderr)
     log.setLevel(logging.INFO)
 
