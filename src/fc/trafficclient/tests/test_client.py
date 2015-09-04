@@ -35,7 +35,7 @@ def client(database, directory, monkeypatch):
 
     monkeypatch.setattr(
         fc.trafficclient.client.ClientRunner, '_fetch', _fetch)
-    return ClientRunner(pclient, '', 'test', 1)
+    return ClientRunner(pclient, 'test', 1)
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def directory(monkeypatch):
     d = mock.Mock()
     monkeypatch.setattr(gocept.net.directory, 'Directory', d)
     d = d()
-    d.lookup_networks.return_value = ['195.62.126.0/24']
+    d.lookup_networks.return_value = {'stb': ['195.62.126.0/24']}
     return d
 
 

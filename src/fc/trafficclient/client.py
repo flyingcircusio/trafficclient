@@ -75,8 +75,9 @@ class ClientRunner(object):
     def discover(self,):
         """Update the list of networks that belong to this location."""
         self.networks = []
-        for vlan, nets in self.directory.lookup_networks(self.location).items():
-	    for network in nets:
+        for vlan, nets in self.directory.lookup_networks(
+                self.location).items():
+            for network in nets:
                 self.networks.append(IPy.IP(network))
 
     def _fetch(self):
