@@ -152,6 +152,7 @@ def test_run_should_commit_and_set_last_update(client):
     client.savedcounters['127.0.0.1'] = 100
     client.run()
     assert client.persistent_client.last_update != datetime.datetime.min
+    assert client.savedcounters == {}
 
 
 def test_exception_raised_should_abort_and_reraise(client):

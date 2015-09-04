@@ -117,6 +117,7 @@ class ClientRunner(object):
             self.directory.store_traffic(
                 xmlrpclib.DateTime(time.time()),
                 list(self._convert_savedcounters_to_xmlrpc()))
+            self.savedcounters.clear()
         except (socket.error, xmlrpclib.Error), e:
             if hasattr(e, 'url'):
                 # Strip out passwords
