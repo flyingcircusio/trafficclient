@@ -38,10 +38,9 @@ class Client(persistent.Persistent):
 class ClientRunner(object):
     """Non-persistent, singleton to structure the update process."""
 
-    def __init__(self, persistent_client, serveruri, location, grace_period):
+    def __init__(self, persistent_client, location, grace_period):
         self.persistent_client = persistent_client
         self.savedcounters = persistent_client.savedcounters
-        self.serveruri = serveruri
         self.location = location
         self.grace_period = datetime.timedelta(minutes=grace_period)
 
@@ -76,8 +75,9 @@ class ClientRunner(object):
     def discover(self,):
         """Update the list of networks that belong to this location."""
         self.networks = []
-        for network in self.directory.lookup_networks(self.location):
-            self.networks.append(IPy.IP(network))
+        for vlan, nets in self.directory.lookup_networks(self.location).items():
+	    for network in nets:
+                self.networks.append(IPy.IP(network))
 
     def _fetch(self):
         output = tempfile.NamedTemporaryFile(delete=False)
@@ -161,7 +161,7 @@ def instance(dbroot):
     return instance
 
 
-def main(configfile):
+def main():
     """Run the trafficclient script.
 
     The only argument configfile is the location of trafficclient's
@@ -169,16 +169,17 @@ def main(configfile):
     exception is raised.
 
     """
+    configfile = sys.argv[1]
     configure_logging()
     config = fc.trafficclient.config.parse(file(configfile))
-    (serveruri, dbdir, location, grace_period) = config
+    (dbdir, location, grace_period) = config
     storage, connection = None, None
     try:
         storage = ZODB.FileStorage.FileStorage("%s/trafficclient.fs" % dbdir)
         database = ZODB.DB(storage)
         connection = database.open()
         pclient = instance(connection.root())
-        client = ClientRunner(pclient, serveruri, location, grace_period)
+        client = ClientRunner(pclient, location, grace_period)
         client.run()
         database.pack(None, 1)
     except Exception, e:

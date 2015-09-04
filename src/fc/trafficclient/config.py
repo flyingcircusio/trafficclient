@@ -9,7 +9,6 @@ def parse(fp):
     config = ConfigParser.SafeConfigParser()
     config.add_section('trafficclient')
     config.readfp(fp)
-    serveruri = config.get('trafficclient', 'server')
     dbdir = os.path.expanduser(config.get('trafficclient', 'dbdir'))
     try:
         os.stat(dbdir)
@@ -23,4 +22,4 @@ def parse(fp):
         grace_period = config.getint('trafficclient', 'grace_period')
     else:
         grace_period = 60
-    return (serveruri, dbdir, location, grace_period)
+    return (dbdir, location, grace_period)
