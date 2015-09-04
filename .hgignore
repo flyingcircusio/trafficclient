@@ -11,3 +11,7 @@ develop-eggs
 lib
 include
 lib64
+htmlcov
+report.xml
+.coverage
+.cache

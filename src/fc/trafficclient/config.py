@@ -1,4 +1,3 @@
-# Copyright (c) 2008 gocept gmbh & co. kg
 # See also LICENSE.txt
 
 import ConfigParser
@@ -20,10 +19,8 @@ def parse(fp):
         except OSError, e:
             raise RuntimeError("Cannot create dbdir '%s': %s" % (dbdir, e))
     location = config.get('trafficclient', 'location')
-    upstream = [x.strip() for x in config.get('trafficclient',
-                                            'upstream').split(',')]
     if config.has_option('trafficclient', 'grace_period'):
         grace_period = config.getint('trafficclient', 'grace_period')
     else:
         grace_period = 60
-    return (serveruri, dbdir, location, upstream, grace_period)
+    return (serveruri, dbdir, location, grace_period)

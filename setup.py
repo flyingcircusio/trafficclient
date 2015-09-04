@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='gocept.trafficclient',
-    version='0.1',
-    author='gocept',
-    author_email='mail@gocept.com',
-    url='https://svn.gocept.com/repos/gocept-int/',
+    name='fc.trafficclient',
+    version='0.2',
+    author='Christian Theune',
+    author_email='ct@flyingcircus.io',
+    url='https://bitbucket.org/flyingcircus/trafficclient',
     description="""\
     Measure traffic and report it to the traffic server.
     """,
@@ -16,16 +16,16 @@ setup(
     package_dir={'': 'src'},
     include_package_data=True,
     zip_safe=False,
-    license='gocept proprietary',
+    license='BSD 2-clause',
     install_requires=[
         'ZODB3',
         'fc.agent',
         'IPy',
-        'mocker',
+        'mock',
     ],
     entry_points={
         'console_scripts': [
-            'trafficclient = gocept.trafficclient.client:main',
+            'trafficclient = fc.trafficclient.client:main',
         ]
     },
 )
