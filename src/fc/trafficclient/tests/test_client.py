@@ -29,7 +29,7 @@ def database():
 def client(database, directory, monkeypatch):
     pclient = fc.trafficclient.client.instance(database)
 
-    def _fetch(self):
+    def _fetch(self, interface):
         return open(os.path.dirname(__file__) + '/sample.pmacct',
                     'rb')
 
@@ -77,7 +77,7 @@ def test_instance_should_not_change_existing_last_update(database):
 
 def test_fetch(client):
     client.networks = [IPy.IP('195.62.126.0/24')]
-    client.fetch()
+    client.fetch('ethtr')
     assert client.savedcounters == {
         '195.62.126.104': 3465,
         '195.62.126.110': 44554,
@@ -98,7 +98,7 @@ def test_fetch(client):
         '195.62.126.60': 1336}
     # Normally the pmacct resets the counter. If we fetch the second
     # time our counters increase.
-    client.fetch()
+    client.fetch('ethtr')
     assert client.savedcounters == {
         '195.62.126.104': 6930,
         '195.62.126.110': 89108,

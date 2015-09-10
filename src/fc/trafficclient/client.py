@@ -46,6 +46,8 @@ class ClientRunner(object):
 
         self.directory = gocept.net.directory.Directory()
 
+        self._local_ips = {}
+
     @property
     def last_update(self):
         return self.persistent_client.last_update
@@ -68,7 +70,8 @@ class ClientRunner(object):
 
     def _run(self):
         self.discover()
-        self.fetch()
+        self.fetch('ethfe')
+        self.fetch('ethsrv')
         self.log()
         self.send()
 
@@ -80,16 +83,26 @@ class ClientRunner(object):
             for network in nets:
                 self.networks.append(IPy.IP(network))
 
-    def _fetch(self):
+    def _fetch(self, interface):
         output = tempfile.NamedTemporaryFile(delete=False)
         subprocess.check_call(
-            ['pmacct', '-c', 'src_host,dst_host', '-M', '*,*', '-r'],
+            ['pmacct', '-p', '/run/pmacctd.{}.socket'.format(interface),
+             '-c', 'src_host,dst_host', '-M', '*,*', '-r'],
             stdout=output)
         return open(output.name, 'r')
 
-    def fetch(self):
+    def is_local_ip(self, ip):
+        if ip not in self._local_ips:
+            self._local_ips[ip] = False
+            for net in self.networks:
+                if ip in net:
+                    self._local_ips[ip] = True
+                    break
+        return self._local_ips[ip]
+
+    def fetch(self, interface):
         """Update the saved byte counters."""
-        with self._fetch() as out:
+        with self._fetch(interface) as out:
             for line in out.readlines():
                 if not line.strip():
                     # The end of the tabular output is signalled by an
@@ -102,13 +115,19 @@ class ClientRunner(object):
                 src_ip = IPy.IP(src_ip)
                 dst_ip = IPy.IP(dst_ip)
                 bytes = int(bytes)
-                for net in self.networks:
-                    if src_ip in net:
-                        self.savedcounters.setdefault(str(src_ip), 0)
-                        self.savedcounters[str(src_ip)] += bytes
-                    if dst_ip in net:
-                        self.savedcounters.setdefault(str(dst_ip), 0)
-                        self.savedcounters[str(dst_ip)] += bytes
+                if self.is_local_ip(src_ip) and self.is_local_ip(dst_ip):
+                    # Purely internal traffic. Ignore.
+                    continue
+                elif self.is_local_ip(src_ip):
+                    accounting_ip = src_ip
+                elif self.is_local_ip(dst_ip):
+                    accounting_ip = dst_ip
+                else:
+                    # Purely external traffic. Should never happen, but hey:
+                    # don't break and dont account the wrong stuff.
+                    continue
+                self.savedcounters.setdefault(str(accounting_ip), 0)
+                self.savedcounters[str(accounting_ip)] += bytes
 
     def send(self):
         """Send traffic deltas to trafficstore."""
