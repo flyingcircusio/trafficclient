@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
+import csv
 import datetime
 import fc.trafficclient.config
+import glob
 import gocept.net.directory
 import IPy
 import logging.handlers
+import os
 import persistent
 import persistent.dict
 import re
 import socket
-import subprocess
 import sys
-import tempfile
 import time
 import transaction
 import xmlrpclib
@@ -37,6 +38,8 @@ class Client(persistent.Persistent):
 
 class ClientRunner(object):
     """Non-persistent, singleton to structure the update process."""
+
+    SPOOL_PATTERN = "/var/spool/pmacctd/*.txt"
 
     def __init__(self, persistent_client, location, grace_period):
         self.persistent_client = persistent_client
@@ -70,8 +73,7 @@ class ClientRunner(object):
 
     def _run(self):
         self.discover()
-        self.fetch('ethfe')
-        self.fetch('ethsrv')
+        self.fetch()
         self.log()
         self.send()
 
@@ -83,14 +85,6 @@ class ClientRunner(object):
             for network in nets:
                 self.networks.append(IPy.IP(network))
 
-    def _fetch(self, interface):
-        output = tempfile.NamedTemporaryFile(delete=False)
-        subprocess.check_call(
-            ['pmacct', '-p', '/run/pmacctd.{}.socket'.format(interface),
-             '-c', 'src_host,dst_host', '-M', '*,*', '-r'],
-            stdout=output)
-        return open(output.name, 'r')
-
     def is_local_ip(self, ip):
         if ip not in self._local_ips:
             self._local_ips[ip] = False
@@ -100,34 +94,36 @@ class ClientRunner(object):
                     break
         return self._local_ips[ip]
 
-    def fetch(self, interface):
-        """Update the saved byte counters."""
-        with self._fetch(interface) as out:
-            for line in out.readlines():
-                if not line.strip():
-                    # The end of the tabular output is signalled by an
-                    # empty line
-                    break
-                src_ip, dst_ip, packets, bytes = line.split()
-                if src_ip == 'SRC_IP':
-                    # First line
-                    continue
-                src_ip = IPy.IP(src_ip)
-                dst_ip = IPy.IP(dst_ip)
-                bytes = int(bytes)
-                if self.is_local_ip(src_ip) and self.is_local_ip(dst_ip):
-                    # Purely internal traffic. Ignore.
-                    continue
-                elif self.is_local_ip(src_ip):
-                    accounting_ip = src_ip
-                elif self.is_local_ip(dst_ip):
-                    accounting_ip = dst_ip
-                else:
-                    # Purely external traffic. Should never happen, but hey:
-                    # don't break and dont account the wrong stuff.
-                    continue
-                self.savedcounters.setdefault(str(accounting_ip), 0)
-                self.savedcounters[str(accounting_ip)] += bytes
+    def _fetch(self):
+        # A generator that returns a record for every line in every file.
+        # When a file is consumed fully, it is deleted.
+        # Matches the file format of pmacctd's csv print plugin:
+        # TAG,TAG2,CLASS,SRC_MAC,DST_MAC,VLAN,COS,ETYPE,SRC_AS,DST_AS,BGP_COMMS,AS_PATH,PREF,MED,PEER_SRC_AS,PEER_DST_AS,PEER_SRC_IP,PEER_DST_IP,IN_IFACE,OUT_IFACE,MPLS_VPN_RD,SRC_IP,DST_IP,SRC_MASK,DST_MASK,SRC_PORT,DST_PORT,TCP_FLAGS,PROTOCOL,TOS,PACKETS,FLOWS,BYTES
+        for spoolfile in glob.iglob(self.SPOOL_PATTERN):
+            with open(spoolfile) as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    yield (IPy.IP(row['SRC_IP']),
+                           IPy.IP(row['DST_IP']),
+                           int(row['BYTES']))
+            os.unlink(spoolfile)
+
+    def fetch(self):
+        """Gather all data from the spool directory."""
+        for src, dst, bytes in self._fetch():
+            if self.is_local_ip(src) and self.is_local_ip(dst):
+                # Purely internal traffic. Ignore.
+                continue
+            elif self.is_local_ip(src):
+                accounting_ip = src
+            elif self.is_local_ip(dst):
+                accounting_ip = dst
+            else:
+                # Purely external traffic. Should never happen, but hey:
+                # don't break and dont account the wrong stuff.
+                continue
+            self.savedcounters.setdefault(str(accounting_ip), 0)
+            self.savedcounters[str(accounting_ip)] += bytes
 
     def send(self):
         """Send traffic deltas to trafficstore."""

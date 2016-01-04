@@ -1,10 +1,12 @@
 from fc.trafficclient.client import Client, ClientRunner
 import datetime
 import fc.trafficclient.client
+import glob
 import IPy
 import mock
 import os.path
 import pytest
+import shutil
 import transaction
 import xmlrpclib
 import ZODB.DB
@@ -26,16 +28,15 @@ def database():
 
 
 @pytest.fixture
-def client(database, directory, monkeypatch):
+def client(database, directory, tmpdir):
     pclient = fc.trafficclient.client.instance(database)
 
-    def _fetch(self, interface):
-        return open(os.path.dirname(__file__) + '/sample.pmacct',
-                    'rb')
+    shutil.copytree(os.path.dirname(__file__) + '/logs',
+                    str(tmpdir) + '/pmacctd')
 
-    monkeypatch.setattr(
-        fc.trafficclient.client.ClientRunner, '_fetch', _fetch)
-    return ClientRunner(pclient, 'test', 1)
+    client = ClientRunner(pclient, 'test', 1)
+    client.SPOOL_PATTERN = str(tmpdir) + '/pmacctd/*.txt'
+    return client
 
 
 @pytest.fixture
@@ -76,47 +77,55 @@ def test_instance_should_not_change_existing_last_update(database):
 
 
 def test_fetch(client):
-    client.networks = [IPy.IP('195.62.126.0/24')]
-    client.fetch('ethtr')
+    client.networks = [IPy.IP('172.20.2.0/24'),
+                       IPy.IP('2a02:238:f030:1c2::/64'),
+                       IPy.IP('172.30.3.0/24'),
+                       IPy.IP('2a02:238:f030:1c3::/64')]
+    client.fetch()
     assert client.savedcounters == {
-        '195.62.126.104': 3465,
-        '195.62.126.110': 44554,
-        '195.62.126.111': 10963,
-        '195.62.126.119': 17426,
-        '195.62.126.122': 77979,
-        '195.62.126.13': 44,
-        '195.62.126.16': 8524,
-        '195.62.126.18': 31743,
-        '195.62.126.24': 15503,
-        '195.62.126.26': 149415,
-        '195.62.126.32': 10490,
-        '195.62.126.33': 229595,
-        '195.62.126.43': 569124,
-        '195.62.126.44': 11930,
-        '195.62.126.48': 342,
-        '195.62.126.51': 5496,
-        '195.62.126.60': 1336}
-    # Normally the pmacct resets the counter. If we fetch the second
-    # time our counters increase.
-    client.fetch('ethtr')
-    assert client.savedcounters == {
-        '195.62.126.104': 6930,
-        '195.62.126.110': 89108,
-        '195.62.126.111': 21926,
-        '195.62.126.119': 34852,
-        '195.62.126.122': 155958,
-        '195.62.126.13': 88,
-        '195.62.126.16': 17048,
-        '195.62.126.18': 63486,
-        '195.62.126.24': 31006,
-        '195.62.126.26': 298830,
-        '195.62.126.32': 20980,
-        '195.62.126.33': 459190,
-        '195.62.126.43': 1138248,
-        '195.62.126.44': 23860,
-        '195.62.126.48': 684,
-        '195.62.126.51': 10992,
-        '195.62.126.60': 2672}
+        '2a02:238:f030:1c2::13': 1296,
+        '2a02:238:f030:1c3::19': 2216,
+        '2a02:238:f030:1c3::104c': 504,
+        '2a02:238:f030:1c3::106c': 2104,
+        '2a02:238:f030:1c3::c': 1568,
+        '2a02:238:f030:1c2::53': 288,
+        '2a02:238:f030:1c3::1076': 1072,
+        '2a02:238:f030:1c3::53': 1568,
+        '2a02:238:f030:1c3::1059': 6640,
+        '2a02:238:f030:1c3::1080': 2792,
+        '2a02:238:f030:1c2::c': 72,
+        '2a02:238:f030:1c2::b': 72,
+        '172.20.2.44': 9240,
+        '2a02:238:f030:1c3::8': 1280,
+        '2a02:238:f030:1c3::9': 1360,
+        '2a02:238:f030:1c3::1082': 1856,
+        '2a02:238:f030:1c3::1087': 7256,
+        '2a02:238:f030:1c3::1': 1776,
+        '2a02:238:f030:1c3::3': 2872,
+        '2a02:238:f030:1c3::4': 1707552,
+        '2a02:238:f030:1c3::5': 1136,
+        '2a02:238:f030:1c3::6': 1280,
+        '2a02:238:f030:1c3::7': 1216,
+        '2a02:238:f030:1c3::107e': 1488,
+        '2a02:238:f030:1c3::107d': 1000,
+        '2a02:238:f030:1c3::1e': 1864,
+        '2a02:238:f030:1c2::105d': 72,
+        '2a02:238:f030:1c3::1060': 2648,
+        '2a02:238:f030:1c3::1007': 648,
+        '2a02:238:f030:1c3::12': 5952,
+        '2a02:238:f030:1c3::13': 8048,
+        '2a02:238:f030:1c3::10': 1720,
+        '2a02:238:f030:1c3::a': 1424,
+        '2a02:238:f030:1c3::b': 1784,
+        '172.30.3.3': 1824,
+        '2a02:238:f030:1c3::e': 1888,
+        '2a02:238:f030:1c3::f': 1360,
+        '2a02:238:f030:1c2::6': 72,
+        '2a02:238:f030:1c2::1007': 72,
+        '2a02:238:f030:1c3::1075': 1288,
+        '2a02:238:f030:1c2::1066': 72,
+        '2a02:238:f030:1c2::8': 72}
+    assert glob.glob(client.SPOOL_PATTERN) == []
 
 
 def test_empty_update_should_connect_to_server(client, directory):
