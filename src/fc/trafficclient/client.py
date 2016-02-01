@@ -103,6 +103,8 @@ class ClientRunner(object):
             with open(spoolfile) as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
+                    if not row['SRC_IP'] or not row['DST_IP']:
+                        continue
                     yield (IPy.IP(row['SRC_IP']),
                            IPy.IP(row['DST_IP']),
                            int(row['BYTES']))
