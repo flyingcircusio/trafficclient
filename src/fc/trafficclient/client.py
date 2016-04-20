@@ -41,11 +41,12 @@ class ClientRunner(object):
 
     SPOOL_PATTERN = "/var/spool/pmacctd/*.txt"
 
-    def __init__(self, persistent_client, location, grace_period):
+    def __init__(self, persistent_client, location, grace_period, ignored_ips):
         self.persistent_client = persistent_client
         self.savedcounters = persistent_client.savedcounters
         self.location = location
         self.grace_period = datetime.timedelta(minutes=grace_period)
+        self.ignored_ips = ignored_ips
 
         self.directory = gocept.net.directory.Directory()
 
@@ -113,7 +114,10 @@ class ClientRunner(object):
     def fetch(self):
         """Gather all data from the spool directory."""
         for src, dst, bytes in self._fetch():
-            if self.is_local_ip(src) and self.is_local_ip(dst):
+            if str(src) in self.ignored_ips or str(dst) in self.ignored_ips:
+                # Traffic to/from destinations we explicitly do not account.
+                continue
+            elif self.is_local_ip(src) and self.is_local_ip(dst):
                 # Purely internal traffic. Ignore.
                 continue
             elif self.is_local_ip(src):

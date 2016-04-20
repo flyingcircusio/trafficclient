@@ -1,10 +1,6 @@
-# Traffic Client Configuration File
-# =================================
-
-# First, we do some imports.
-
-# >>> import fc.trafficclient.config
-# >>> import StringIO
+import fc.trafficclient.config
+import StringIO
+import pytest
 
 # A configuration file consists of a single section and has keys for:
 
@@ -18,78 +14,70 @@
 #   reduce noise in case the traffic server was just being restarted due to
 #   logrotation and other such administrivia (optional, default 60 minutes)
 
-# >>> cfg = StringIO.StringIO("""
-# ... [trafficclient]
-# ... server = http://user:password@server:port/sources
-# ... dbdir = /tmp
-# ... location = whq
-# ... upstream = eth0,vdef0.0
-# ... grace_period = 15
-# ... """)
 
-# Now, parse() reads the file and returns the values
+def test_1():
+    cfg = StringIO.StringIO("""
+[trafficclient]
+server = http://user:password@server:port/sources
+dbdir = /tmp
+location = whq
+upstream = eth0,vdef0.0
+grace_period = 15
+ignored-ips = 1234.123.123.1
+    213:12::0
+    195.23.233.0
+""")
+    # Now, parse() reads the file and returns the values
+    assert (fc.trafficclient.config.parse(cfg) ==
+            ('/tmp', 'whq', 15,
+             set(['1234.123.123.1', '195.23.233.0', '213:12::0'])))
 
-# >>> fc.trafficclient.config.parse(cfg)
-# ('http://user:password@server:port/sources',
-#  '/tmp',
-#  'whq',
-#  ['eth0', 'vdef0.0'],
-#  15)
 
-# If the server uri is missing, parse() raises an exception.
+def test_missing_options_raises_exception():
+    with pytest.raises(Exception):
+        fc.trafficclient.config.parse(StringIO.StringIO("""
+[trafficclient]
+dbdir = /tmp
+    """))
 
-# >>> fc.trafficclient.config.parse(StringIO.StringIO("""
-# ... [trafficclient]
-# ... dbdir = /tmp
-# ... """))
-# Traceback (most recent call last):
-# NoOptionError: No option 'server' in section: 'trafficclient'
+    with pytest.raises(Exception):
+        fc.config.parse(StringIO.StringIO("""
+[trafficclient]
+server = http://host/path
+"""))
 
-# The same applies for a missing database directory:
+    # If the database directory does not exist and parse() fails to create it,
+    # an exception is raised, too
 
-# >>> fc.config.parse(StringIO.StringIO("""
-# ... [trafficclient]
-# ... server = http://host/path
-# ... """))
-# Traceback (most recent call last):
-# NoOptionError: No option 'dbdir' in section: 'trafficclient'
+    with pytest.raises(Exception):
+        fc.config.parse(StringIO.StringIO("""
+[trafficclient]
+server = http://host/path
+dbdir = /in/valid/path
+"""))
 
-# If the database directory does not exist and parse() fails to create it, an
-# exception is raised.
+    # If the directory contains a '~' it will be expanded:
 
-# >>> fc.config.parse(StringIO.StringIO("""
-# ... [trafficclient]
-# ... server = http://host/path
-# ... dbdir = /in/valid/path
-# ... """))
-# Traceback (most recent call last):
-# RuntimeError: Cannot create dbdir '/in/valid/path': [Errno 13]
-# Permission denied: '/in'
+    import os
+    import pwd
+    config = fc.trafficclient.config.parse(StringIO.StringIO(u"""
+[trafficclient]
+server =
+dbdir = ~
+location = test
+"""))
+    assert pwd.getpwuid(os.getuid())[5] == config[0]
 
-# If the directory contains a '~' it will be expanded:
+    # The grace period is optional:
 
-# >>> import os, pwd
-# >>> config = fc.config.parse(StringIO.StringIO(u"""
-# ... [trafficclient]
-# ... server =
-# ... dbdir = ~
-# ... location = test
-# ... upstream = eth0
-# ... """))
-# >>> pwd.getpwuid(os.getuid())[5] == config[1]
-# True
-
-# The grace period is optional:
-
-# >>> fc.config.parse(StringIO.StringIO("""
-# ... [trafficclient]
-# ... server = http://user:password@server:port/sources
-# ... dbdir = /tmp
-# ... location = whq
-# ... upstream = eth0,vdef0.0
-# ... """))
-# ('http://user:password@server:port/sources',
-#  '/tmp',
-#  'whq',
-#  ['eth0', 'vdef0.0'],
-#  60)
+    assert (fc.trafficclient.config.parse(StringIO.StringIO("""
+[trafficclient]
+server = http://user:password@server:port/sources
+dbdir = /tmp
+location = whq
+upstream = eth0,vdef0.0
+    """)) ==
+            ('/tmp',
+             'whq',
+             60,
+             set([])))

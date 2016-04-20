@@ -34,7 +34,7 @@ def client(database, directory, tmpdir):
     shutil.copytree(os.path.dirname(__file__) + '/logs',
                     str(tmpdir) + '/pmacctd')
 
-    client = ClientRunner(pclient, 'test', 1)
+    client = ClientRunner(pclient, 'test', 1, set(['141.1.1.1']))
     client.SPOOL_PATTERN = str(tmpdir) + '/pmacctd/*.txt'
     return client
 

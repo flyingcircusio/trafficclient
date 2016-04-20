@@ -22,4 +22,9 @@ def parse(fp):
         grace_period = config.getint('trafficclient', 'grace_period')
     else:
         grace_period = 60
-    return (dbdir, location, grace_period)
+    ignored_ips = set()
+    if config.has_option('trafficclient', 'ignored-ips'):
+        ignored_ips.update(
+            x.strip() for x in
+            config.get('trafficclient', 'ignored-ips').split('\n'))
+    return (dbdir, location, grace_period, ignored_ips)
