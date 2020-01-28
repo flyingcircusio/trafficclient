@@ -196,14 +196,14 @@ def main():
     configfile = sys.argv[1]
     configure_logging()
     config = fc.trafficclient.config.parse(file(configfile))
-    (dbdir, location, grace_period) = config
+    (dbdir, location, grace_period, ignored_ips) = config
     storage, connection = None, None
     try:
         storage = ZODB.FileStorage.FileStorage("%s/trafficclient.fs" % dbdir)
         database = ZODB.DB(storage)
         connection = database.open()
         pclient = instance(connection.root())
-        client = ClientRunner(pclient, location, grace_period)
+        client = ClientRunner(pclient, location, grace_period, ignored_ips)
         client.run()
         database.pack(None, 1)
     except Exception, e:
