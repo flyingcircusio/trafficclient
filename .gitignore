@@ -1,4 +1,4 @@
-syntax: glob
+
 eggs
 .installed.cfg
 *.sw?
