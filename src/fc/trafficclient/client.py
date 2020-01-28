@@ -85,6 +85,11 @@ class ClientRunner(object):
                 self.location).items():
             for network in nets:
                 self.networks.append(IPy.IP(network))
+        # Add ignored IPs here as well
+        for ip in self.ignored_ips:
+            # Those can be IP addresses without net, with net mask,
+            # or host mask
+            self.networks.append(IPy.IP(ip))
 
     def is_local_ip(self, ip):
         if ip not in self._local_ips:
@@ -114,10 +119,7 @@ class ClientRunner(object):
     def fetch(self):
         """Gather all data from the spool directory."""
         for src, dst, bytes in self._fetch():
-            if str(src) in self.ignored_ips or str(dst) in self.ignored_ips:
-                # Traffic to/from destinations we explicitly do not account.
-                continue
-            elif self.is_local_ip(src) and self.is_local_ip(dst):
+            if self.is_local_ip(src) and self.is_local_ip(dst):
                 # Purely internal traffic. Ignore.
                 continue
             elif self.is_local_ip(src):
